@@ -22,25 +22,25 @@ const ChartComponent = ({ data }) => {
 						{
 							label: 'Temperature (°C)',
 							data: data.chartData.temperature,
-							borderColor: '#FF6384',
+							borderColor: '#FFB3BA', // pastel pink
 							tension: 0.4,
 						},
 						{
 							label: 'Humidity (%)',
 							data: data.chartData.humidity,
-							borderColor: '#36A2EB',
+							borderColor: '#B3E2CC', // pastel green
 							tension: 0.4,
 						},
 						{
 							label: 'Pressure (hPa)',
 							data: data.chartData.pressure,
-							borderColor: '#4BC0C0',
+							borderColor: '#FFDF8C', // pastel yellow
 							tension: 0.4,
 						},
 						{
 							label: 'Gas (Ω)',
 							data: data.chartData.gas,
-							borderColor: '#FFCD56',
+							borderColor: '#C6A3D1', // pastel purple
 							tension: 0.4,
 						},
 					],
@@ -91,7 +91,7 @@ const ChartComponent = ({ data }) => {
 			className='chart-container'
 			style={{ height: '400px', marginTop: '20px' }}
 		>
-			<h2>Sensor Readings Over Time</h2>
+			<h2>Sensor Readings / Time</h2>
 			<canvas ref={chartRef} />
 		</div>
 	)

@@ -2,6 +2,14 @@ import { useState } from 'react'
 import ChartComponent from './Chart'
 import SensorDataHandler from './SensorDataHandler'
 
+// Define color constants to match the chart colors
+const COLORS = {
+	temperature: '#FFB3BA',
+	humidity: '#B3E2CC',
+	pressure: '#FFDF8C',
+	gas: '#C6A3D1',
+}
+
 const Dashboard = () => {
 	const [data, setData] = useState({
 		temperature: '--',
@@ -30,42 +38,48 @@ const Dashboard = () => {
 
 	return (
 		<div className='dashboard'>
-			<div className='dashboard-header'>
-				<h1>BME680 Sensor Dashboard</h1>
-			</div>
+			<header className='dashboard-header'>
+				<h1>Indoor Air Quality | BME680 Sensor Dashboard</h1>
+			</header>
+
 			<div className='cards-container'>
 				{/* Current Readings */}
 				<div className='card'>
-					<div className='card-header'>Current Readings</div>
+					<h2 className='card-header'>Current Readings</h2>
 					<div className='readings-grid'>
 						<div className='reading-item'>
 							<span>Temperature</span>
-							<span>
+							<span style={{ color: COLORS.temperature }}>
 								{data.temperature}°C / {convertToFahrenheit(data.temperature)}°F
 							</span>
 						</div>
+
 						<div className='reading-item'>
 							<span>Humidity</span>
-							<span>{data.humidity}%</span>
+							<span style={{ color: COLORS.humidity }}>{data.humidity}%</span>
 						</div>
+
 						<div className='reading-item'>
 							<span>Pressure</span>
-							<span>{data.pressure} hPa</span>
+							<span style={{ color: COLORS.pressure }}>
+								{data.pressure} hPa
+							</span>
 						</div>
+
 						<div className='reading-item'>
 							<span>Gas</span>
-							<span>{data.gas} Ω</span>
+							<span style={{ color: COLORS.gas }}>{data.gas} Ω</span>
 						</div>
 					</div>
 				</div>
 
 				{/* Statistics */}
 				<div className='card'>
-					<div className='card-header'>Statistics</div>
+					<h2 className='card-header'>Statistics</h2>
 					<div className='stats-container'>
 						{/* Temperature Stats */}
 						<div className='stat-section'>
-							<h3>Temperature</h3>
+							<h3 style={{ color: COLORS.temperature }}>Temperature</h3>
 							<div className='stats-grid'>
 								<div className='stat-item'>
 									<span>Average</span>
@@ -74,6 +88,7 @@ const Dashboard = () => {
 										{convertToFahrenheit(data.stats.temperature.avg)}°F
 									</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Maximum</span>
 									<span>
@@ -81,6 +96,7 @@ const Dashboard = () => {
 										{convertToFahrenheit(data.stats.temperature.max)}°F
 									</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Minimum</span>
 									<span>
@@ -93,16 +109,18 @@ const Dashboard = () => {
 
 						{/* Humidity Stats */}
 						<div className='stat-section'>
-							<h3>Humidity</h3>
+							<h3 style={{ color: COLORS.humidity }}>Humidity</h3>
 							<div className='stats-grid'>
 								<div className='stat-item'>
 									<span>Average</span>
 									<span>{data.stats.humidity.avg}%</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Maximum</span>
 									<span>{data.stats.humidity.max}%</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Minimum</span>
 									<span>{data.stats.humidity.min}%</span>
@@ -112,16 +130,18 @@ const Dashboard = () => {
 
 						{/* Pressure Stats */}
 						<div className='stat-section'>
-							<h3>Pressure</h3>
+							<h3 style={{ color: COLORS.pressure }}>Pressure</h3>
 							<div className='stats-grid'>
 								<div className='stat-item'>
 									<span>Average</span>
 									<span>{data.stats.pressure.avg} hPa</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Maximum</span>
 									<span>{data.stats.pressure.max} hPa</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Minimum</span>
 									<span>{data.stats.pressure.min} hPa</span>
@@ -131,16 +151,18 @@ const Dashboard = () => {
 
 						{/* Gas Stats */}
 						<div className='stat-section'>
-							<h3>Gas</h3>
+							<h3 style={{ color: COLORS.gas }}>Gas</h3>
 							<div className='stats-grid'>
 								<div className='stat-item'>
 									<span>Average</span>
 									<span>{data.stats.gas.avg} Ω</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Maximum</span>
 									<span>{data.stats.gas.max} Ω</span>
 								</div>
+
 								<div className='stat-item'>
 									<span>Minimum</span>
 									<span>{data.stats.gas.min} Ω</span>
@@ -152,19 +174,10 @@ const Dashboard = () => {
 			</div>
 
 			{/* Chart component */}
-			<ChartComponent data={data} />
+			<ChartComponent data={data} colors={COLORS} />
 
 			{/* Place SensorDataHandler at the bottom of the page */}
-			<div
-				className='footer-section'
-				style={{
-					marginTop: '20px',
-					padding: '10px',
-					borderTop: '1px solid #eee',
-				}}
-			>
-				<SensorDataHandler setData={setData} />
-			</div>
+			<SensorDataHandler setData={setData} />
 		</div>
 	)
 }

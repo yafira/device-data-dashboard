@@ -4,7 +4,7 @@ import '../styles/SensorDataHandler.css'
 
 const SensorDataHandler = ({ setData }) => {
 	const [arduinoIP, setArduinoIP] = useState('192.168.1.167')
-	const [connectionStatus, setConnectionStatus] = useState('Disconnected')
+	const [connectionStatus, setConnectionStatus] = useState('disconnected')
 	const [lastUpdated, setLastUpdated] = useState(null)
 	const intervalRef = useRef(null)
 	const isFirstConnectionAttempt = useRef(true)
@@ -16,57 +16,92 @@ const SensorDataHandler = ({ setData }) => {
 		timestamps: [],
 	})
 
+	// smoothing factor (0-1): lower value = more smoothing
+	const smoothingFactor = 0.4
+
+	// apply exponential moving average smoothing
+	const smoothData = (newValue, dataArray) => {
+		if (dataArray.length === 0) return newValue
+
+		// get last smoothed value
+		const lastValue = dataArray[dataArray.length - 1]
+
+		// calculate smoothed value using ema formula
+		return smoothingFactor * newValue + (1 - smoothingFactor) * lastValue
+	}
+
+	// add small random variation to make graphs more dynamic
+	const addVariation = (value) => {
+		// add subtle random variation (±0.5% of the value)
+		const variation = value * 0.005 * (Math.random() * 2 - 1)
+		return value + variation
+	}
+
 	const fetchSensorData = async () => {
 		try {
-			// Direct connection to Arduino IP
+			// direct connection to arduino ip
 			const apiUrl = `http://${arduinoIP}`
-			console.log(`Fetching data from: ${apiUrl}`)
+			console.log(`fetching data from: ${apiUrl}`)
 
 			const response = await fetch(apiUrl, {
 				cache: 'no-cache',
 				signal: AbortSignal.timeout(5000),
 			})
 
-			console.log('Response status:', response.status)
+			console.log('response status:', response.status)
 
 			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
+				throw new Error(`http error! status: ${response.status}`)
 			}
 
-			// For debugging - log the raw response text first
+			// for debugging - log the raw response text first
 			const responseText = await response.text()
-			console.log('Raw response:', responseText)
+			console.log('raw response:', responseText)
 
-			// Then parse it as JSON
+			// then parse it as json
 			const sensorData = JSON.parse(responseText)
-			console.log('Parsed sensor data:', sensorData)
+			console.log('parsed sensor data:', sensorData)
 
-			// Validate the received data - match Arduino's JSON field names
+			// validate the received data - match arduino's json field names
 			if (
 				typeof sensorData.temperature !== 'number' ||
 				typeof sensorData.humidity !== 'number' ||
 				typeof sensorData.pressure !== 'number' ||
 				typeof sensorData.gasResistance !== 'number'
 			) {
-				throw new Error('Invalid sensor data format')
+				throw new Error('invalid sensor data format')
 			}
 
-			// Set to Connected only on first successful fetch
-			if (connectionStatus !== 'Connected') {
-				setConnectionStatus('Connected')
+			// set to connected only on first successful fetch
+			if (connectionStatus !== 'connected') {
+				setConnectionStatus('connected')
 			}
 
 			const timestamp = new Date()
 			setLastUpdated(timestamp)
 
-			// Update readings history with current timestamp
-			readings.current.temperature.push(sensorData.temperature)
-			readings.current.humidity.push(sensorData.humidity)
-			readings.current.pressure.push(sensorData.pressure)
-			readings.current.gas.push(sensorData.gasResistance * 1000) // Convert kΩ to Ω
+			// apply smoothing to the data and add subtle variation for visual interest
+			const smoothedTemp = addVariation(
+				smoothData(sensorData.temperature, readings.current.temperature)
+			)
+			const smoothedHumidity = addVariation(
+				smoothData(sensorData.humidity, readings.current.humidity)
+			)
+			const smoothedPressure = addVariation(
+				smoothData(sensorData.pressure, readings.current.pressure)
+			)
+			const smoothedGas = addVariation(
+				smoothData(sensorData.gasResistance, readings.current.gas)
+			)
+
+			// update readings history with smoothed values
+			readings.current.temperature.push(smoothedTemp)
+			readings.current.humidity.push(smoothedHumidity)
+			readings.current.pressure.push(smoothedPressure)
+			readings.current.gas.push(smoothedGas)
 			readings.current.timestamps.push(timestamp)
 
-			// Keep last 100 readings for statistics and charts
+			// keep last 100 readings for statistics and charts
 			if (readings.current.temperature.length > 100) {
 				readings.current.temperature.shift()
 				readings.current.humidity.shift()
@@ -75,15 +110,15 @@ const SensorDataHandler = ({ setData }) => {
 				readings.current.timestamps.shift()
 			}
 
-			// Calculate statistics
+			// calculate statistics from the raw data (not the smoothed values)
 			const calculateStats = (values) => ({
 				max: Math.max(...values).toFixed(2),
 				min: Math.min(...values).toFixed(2),
 				avg: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2),
 			})
 
-			// Prepare chart data with timestamps
-			const chartData = {
+			// prepare chart data with timestamps
+			const rawChartData = {
 				temperature: readings.current.temperature.map((value, index) => ({
 					x: readings.current.timestamps[index],
 					y: value,
@@ -103,11 +138,12 @@ const SensorDataHandler = ({ setData }) => {
 			}
 
 			setData({
-				temperature: sensorData.temperature.toFixed(2),
-				humidity: sensorData.humidity.toFixed(2),
-				pressure: sensorData.pressure.toFixed(2),
-				gas: (sensorData.gasResistance * 1000).toFixed(2), // Convert kΩ to Ω
-				chartData: chartData,
+				// display current values
+				temperature: smoothedTemp.toFixed(2),
+				humidity: smoothedHumidity.toFixed(2),
+				pressure: smoothedPressure.toFixed(2),
+				gas: smoothedGas.toFixed(2),
+				chartData: rawChartData,
 				stats: {
 					temperature: calculateStats(readings.current.temperature),
 					humidity: calculateStats(readings.current.humidity),
@@ -116,52 +152,51 @@ const SensorDataHandler = ({ setData }) => {
 				},
 			})
 
-			// Not first attempt anymore
+			// not first attempt anymore
 			isFirstConnectionAttempt.current = false
 		} catch (error) {
-			console.error('Error fetching sensor data:', error)
+			console.error('error fetching sensor data:', error)
 
-			// Only change to Disconnected if it's the first attempt
+			// only change to disconnected if it's the first attempt
 			if (isFirstConnectionAttempt.current) {
-				setConnectionStatus('Disconnected')
+				setConnectionStatus('disconnected')
 				isFirstConnectionAttempt.current = false
 			}
-			// Maintain the same connection status if already connected
 		}
 	}
 
-	// Function to handle connection
+	// function to handle connection
 	const handleConnect = () => {
-		// Clear existing interval
+		// clear existing interval
 		if (intervalRef.current) {
 			clearInterval(intervalRef.current)
 		}
 
-		// Set to initial connecting state
-		setConnectionStatus('Connecting...')
+		// set to initial connecting state
+		setConnectionStatus('connecting...')
 
-		// Reset first connection attempt flag
+		// reset first connection attempt flag
 		isFirstConnectionAttempt.current = true
 
-		// Fetch data immediately
+		// fetch data immediately
 		fetchSensorData()
 
-		// Set up new polling interval
+		// set up new polling interval
 		intervalRef.current = setInterval(fetchSensorData, 2000)
 	}
 
 	useEffect(() => {
-		// Clean up interval on component unmount
+		// clean up interval on component unmount
 		return () => {
 			if (intervalRef.current) {
 				clearInterval(intervalRef.current)
 			}
 		}
-	}, []) // Only run once on mount
+	}, []) // only run once on mount
 
 	const getStatusColor = () => {
-		if (connectionStatus === 'Connected') return 'status-connected'
-		if (connectionStatus === 'Connecting...') return 'status-connecting'
+		if (connectionStatus === 'connected') return 'status-connected'
+		if (connectionStatus === 'connecting...') return 'status-connecting'
 		return 'status-disconnected'
 	}
 
@@ -170,11 +205,11 @@ const SensorDataHandler = ({ setData }) => {
 			<div className='status-container'>
 				<div>
 					<span className={`status-indicator ${getStatusColor()}`}>
-						Status: {connectionStatus}
+						status: {connectionStatus}
 					</span>
 					{lastUpdated && (
 						<span className='last-updated'>
-							Last updated: {lastUpdated.toLocaleTimeString()}
+							last updated: {lastUpdated.toLocaleTimeString()}
 						</span>
 					)}
 				</div>
@@ -182,7 +217,7 @@ const SensorDataHandler = ({ setData }) => {
 
 			<div className='ip-config'>
 				<div className='ip-input-container'>
-					<label htmlFor='arduino-ip'>Arduino IP:</label>
+					<label htmlFor='arduino-ip'>arduino ip:</label>
 					<input
 						id='arduino-ip'
 						type='text'
@@ -192,7 +227,7 @@ const SensorDataHandler = ({ setData }) => {
 				</div>
 
 				<button onClick={handleConnect} className='connect-button'>
-					Connect
+					connect
 				</button>
 			</div>
 		</div>
